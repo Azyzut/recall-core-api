@@ -1,0 +1,41 @@
+image:
+  repository: docker.io/CHANGEME/recall-core-api
+  tag: latest
+  pullPolicy: Always
+
+replicaCount: 1
+
+service:
+  port: 3001
+
+# Non-sensitive configuration, rendered directly as container env.
+env:
+  DATABASE_SSL: ""
+  AUTH_TRUST_HOST: 'true'
+  AWS_REGION: 'us-east-1'
+  AI_SERVICE_URL: 'http://recall-ai-service:8080'
+  RECALL_WORKER_URL: 'http://recall-worker:8080'
+  S3_BUCKET: ""
+  NEXTAUTH_URL: ""
+
+# Sensitive values. Rendered into a Secret and referenced by secretKeyRef, so
+# they do not appear in `kubectl get deployment -o yaml`. Supply at deploy time
+# with --set-string, or point existingSecret at a Secret managed elsewhere.
+secretEnv:
+  DATABASE_URL: ""
+  AUTH_SECRET: ""
+  FM_KEY: ""
+  ADMIN_PASSWORD: ""
+  VOYAGE_API_KEY: ""
+
+# If set, this Secret is used instead of one created by this chart. Preferred
+# for real deployments so credentials never pass through Helm values.
+existingSecret: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

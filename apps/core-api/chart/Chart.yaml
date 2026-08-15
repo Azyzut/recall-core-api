@@ -1,0 +1,6 @@
+apiVersion: v2
+name: recall-core-api
+description: "Core API. Public /api/* surface; proxies to the AI service and discovery worker."
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
