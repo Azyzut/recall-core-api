@@ -45,7 +45,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 // it — Web UI's middleware consumes that config too, and without the
 // augmentation in scope there it does not typecheck.
 
-declare module 'next-auth/jwt' {
+// Augments '@auth/core/jwt', not 'next-auth/jwt'.
+//
+// next-auth/jwt.d.ts is a pure re-export — `export * from "@auth/core/jwt"` —
+// with no declarations of its own, and TypeScript cannot merge an augmentation
+// into a file that only re-exports. Augmenting it fails with TS2664 "Invalid
+// module name in augmentation" even though `import type { JWT } from
+// 'next-auth/jwt'` resolves perfectly well. The interface itself is declared in
+// @auth/core/jwt, so that is what has to be augmented.
+declare module '@auth/core/jwt' {
   interface JWT {
     id?: string;
     companyId?: string | null;
