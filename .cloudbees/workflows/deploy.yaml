@@ -138,7 +138,10 @@ jobs:
               AI_SERVICE_URL: http://recall-ai-service:8080
               RECALL_WORKER_URL: http://recall-worker:8080
               S3_BUCKET: ${{ vars.S3_BUCKET }}
-              NEXTAUTH_URL: http://${{ vars.hostname }}
+              # https, not http — must match web-ui exactly. Both services validate
+              # the same session cookie, so a scheme mismatch between them breaks
+              # auth in a way that looks like a credentials problem.
+              NEXTAUTH_URL: https://${{ vars.hostname }}
             secretEnv:
               DATABASE_URL: ${{ toJSON(secrets.DATABASE_URL) }}
               AUTH_SECRET: ${{ toJSON(secrets.AUTH_SECRET) }}
