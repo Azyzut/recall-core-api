@@ -152,8 +152,8 @@ jobs:
               # `== 'unset' && '' || value` does NOT work: '' is falsy, so the
               # ternary falls through to value precisely when the sentinel is set.
               FM_KEY: ${{ toJSON(vars.FM_KEY != 'unset' && vars.FM_KEY || '') }}
-              ADMIN_PASSWORD: ${{ toJSON(secrets.ADMIN_PASSWORD) }}
-              VOYAGE_API_KEY: ${{ toJSON(secrets.VOYAGE_API_KEY) }}
+              ADMIN_PASSWORD: ${{ toJSON(secrets.ADMIN_PASSWORD != 'unset' && secrets.ADMIN_PASSWORD || '') }}
+              VOYAGE_API_KEY: ${{ toJSON(secrets.VOYAGE_API_KEY != 'unset' && secrets.VOYAGE_API_KEY || '') }}
 
       - name: Show what happened in the namespace
         # `if: always()` rather than `if: failure()` - always() is proven to work in
