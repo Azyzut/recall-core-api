@@ -7,7 +7,7 @@ import { auth } from '@/auth';
 import db from '@recall/shared/db';
 import { createDocument, getDocumentsByRequirement, getFileType } from '@recall/shared/services/documents';
 import { getRequirementById } from '@recall/shared/services/requirements';
-import { getUploadUrl, buildS3Key } from '@/lib/services/s3';
+import { getUploadUrl, buildS3Key , isStorageConfigured} from '@/lib/services/s3';
 import { randomUUID } from 'crypto';
 
 /**
@@ -16,6 +16,13 @@ import { randomUUID } from 'crypto';
  * Body: { requirementId, filename, contentType, fileSizeBytes }
  */
 export async function POST(request: NextRequest) {
+  if (!isStorageConfigured()) {
+    return NextResponse.json(
+      { error: 'Document storage is not configured for this deployment.' },
+      { status: 503 }
+    );
+  }
+
 
   try {
     const session = await auth();
@@ -103,6 +110,13 @@ export async function POST(request: NextRequest) {
  * List all documents for a requirement
  */
 export async function GET(request: NextRequest) {
+  if (!isStorageConfigured()) {
+    return NextResponse.json(
+      { error: 'Document storage is not configured for this deployment.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const session = await auth();
     const { searchParams } = new URL(request.url);

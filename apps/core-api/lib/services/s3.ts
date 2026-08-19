@@ -3,8 +3,30 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const BUCKET = process.env.S3_BUCKET || 'ehs-documents-219826710834';
-const REGION = process.env.AWS_REGION || 'us-west-2';
+// No fallback bucket. The previous default, 'ehs-documents-219826710834', named a
+// real account's bucket in a repository attendees copy: every unconfigured
+// deployment would have aimed presigned URLs at it.
+//
+// The workshop does not provision S3, so document upload is simply unavailable.
+// That is fine — but it has to FAIL CLEARLY, because the UI does expose upload
+// (drag-and-drop on /matrix/requirements/[id]). Silently pointing at a bucket
+// nobody owns produces an opaque AWS error; this produces a sentence.
+const BUCKET = process.env.S3_BUCKET;
+const REGION = process.env.AWS_REGION || 'us-east-1';
+
+/** Whether document storage is configured for this deployment. */
+export function isStorageConfigured(): boolean {
+  return !!BUCKET && BUCKET !== 'unset';
+}
+
+function requireBucket(): string {
+  if (!isStorageConfigured()) {
+    throw new Error(
+      'Document storage is not configured for this deployment. Set S3_BUCKET to enable uploads.',
+    );
+  }
+  return BUCKET as string;
+}
 
 const s3Client = new S3Client({
   region: REGION,
@@ -20,7 +42,7 @@ export async function getUploadUrl(
   expiresIn = 300 // 5 minutes
 ): Promise<string> {
   const command = new PutObjectCommand({
-    Bucket: BUCKET,
+    Bucket: requireBucket(),
     Key: s3Key,
     ContentType: contentType,
   });
@@ -36,7 +58,7 @@ export async function getDownloadUrl(
   expiresIn = 3600 // 1 hour
 ): Promise<string> {
   const command = new GetObjectCommand({
-    Bucket: BUCKET,
+    Bucket: requireBucket(),
     Key: s3Key,
     ResponseContentDisposition: `attachment; filename="${filename}"`,
   });
@@ -48,7 +70,7 @@ export async function getDownloadUrl(
  */
 export async function deleteFromS3(s3Key: string): Promise<void> {
   const command = new DeleteObjectCommand({
-    Bucket: BUCKET,
+    Bucket: requireBucket(),
     Key: s3Key,
   });
   await s3Client.send(command);

@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import db from '@recall/shared/db';
 import { getDocumentById, deleteDocument } from '@recall/shared/services/documents';
-import { getDownloadUrl, deleteFromS3 } from '@/lib/services/s3';
+import { getDownloadUrl, deleteFromS3 , isStorageConfigured} from '@/lib/services/s3';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -20,6 +20,13 @@ export async function GET(
   request: NextRequest,
   context: RouteContext
 ) {
+  if (!isStorageConfigured()) {
+    return NextResponse.json(
+      { error: 'Document storage is not configured for this deployment.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = await context.params;
     const session = await auth();
@@ -81,6 +88,13 @@ export async function DELETE(
   request: NextRequest,
   context: RouteContext
 ) {
+  if (!isStorageConfigured()) {
+    return NextResponse.json(
+      { error: 'Document storage is not configured for this deployment.' },
+      { status: 503 }
+    );
+  }
+
   try {
     const session = await auth();
     if (!session?.user?.id) {
