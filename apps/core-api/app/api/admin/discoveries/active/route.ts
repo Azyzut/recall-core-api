@@ -8,7 +8,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { callWorker, WorkerUnavailableError } from '@/lib/services/worker-client';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'recall-admin-2024';
+// No fallback. This repository is a template attendees copy, so a hardcoded
+// default is a PUBLISHED password on an app reachable at a public hostname — and
+// the previous default, 'recall-admin-2024', was exactly that.
+//
+// Unset (or the `unset` sentinel, which is how Unify stores "not configured yet")
+// means these endpoints refuse every request. Failing closed is correct for an
+// admin surface.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_ENABLED = !!ADMIN_PASSWORD && ADMIN_PASSWORD !== 'unset';
 
 interface WorkerActiveDiscovery {
   id: string;
@@ -27,6 +35,13 @@ export async function GET(request: NextRequest) {
   // Check admin authentication
   const { searchParams } = new URL(request.url);
   const auth = searchParams.get('auth');
+
+  if (!ADMIN_ENABLED) {
+    return NextResponse.json(
+      { error: 'Admin endpoints are disabled. Set ADMIN_PASSWORD to enable them.' },
+      { status: 503 }
+    );
+  }
 
   if (auth !== ADMIN_PASSWORD) {
     return NextResponse.json(

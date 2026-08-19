@@ -3,7 +3,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import db from '@recall/shared/db';
 import { sql } from 'kysely';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'recall-admin-2024';
+// No fallback. This repository is a template attendees copy, so a hardcoded
+// default is a PUBLISHED password on an app reachable at a public hostname — and
+// the previous default, 'recall-admin-2024', was exactly that.
+//
+// Unset (or the `unset` sentinel, which is how Unify stores "not configured yet")
+// means these endpoints refuse every request. Failing closed is correct for an
+// admin surface: an endpoint that accepts a credential anyone can read on GitHub
+// is worse than one that is switched off.
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_ENABLED = !!ADMIN_PASSWORD && ADMIN_PASSWORD !== 'unset';
 
 export async function GET(request: NextRequest) {
   // Simple auth check via header or query param
@@ -11,7 +20,14 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const authParam = searchParams.get('auth');
 
-  if (!ADMIN_PASSWORD || (authHeader !== ADMIN_PASSWORD && authParam !== ADMIN_PASSWORD)) {
+  if (!ADMIN_ENABLED) {
+    return NextResponse.json(
+      { error: 'Admin endpoints are disabled. Set ADMIN_PASSWORD to enable them.' },
+      { status: 503 }
+    );
+  }
+
+  if (authHeader !== ADMIN_PASSWORD && authParam !== ADMIN_PASSWORD) {
     return NextResponse.json(
       { error: 'Unauthorized. Admin access required.' },
       { status: 401 }
