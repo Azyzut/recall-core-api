@@ -3,7 +3,7 @@
 Core API. The public /api/* surface; proxies to the AI service and the discovery worker.
 
 One of five components of the Product Recall Tracker. Start at the
-[hands-on lab](../recall-tracker-hands-on-lab) rather than here.
+[hands-on lab](https://github.com/cloudbees/recall-tracker-hands-on-lab) rather than here.
 
 ## Layout
 
