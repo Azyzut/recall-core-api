@@ -149,11 +149,11 @@ jobs:
             secretEnv:
               DATABASE_URL: ${{ toJSON(secrets.DATABASE_URL) }}
               AUTH_SECRET: ${{ toJSON(secrets.AUTH_SECRET) }}
-              # `unset` is the sentinel for "no SDK key yet": Unify refuses to
-              # store an empty variable value, so attendees cannot leave this
-              # blank before Module 07. Map it to an empty string, or the SDK
-              # tries to authenticate with the literal word `unset` instead of
-              # taking its documented no-key path.
+              # `unset` is the sentinel for "no SDK key yet". Unify will not save a
+              # variable or secret with an empty value, so every key needs something in
+              # it — attendees cannot simply leave this blank before Module 07. Map the
+              # sentinel back to an empty string, or the SDK tries to authenticate with
+              # the literal word `unset` instead of taking its documented no-key path.
               #
               # Written as `!= 'unset' && value || ''` deliberately. The natural
               # `== 'unset' && '' || value` does NOT work: '' is falsy, so the
