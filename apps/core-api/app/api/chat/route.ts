@@ -14,6 +14,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import db from '@recall/shared/db';
 import { callAiService, AiServiceUnavailableError } from '@/lib/services/ai-client';
+import { record } from '@/lib/error-metrics';
+
+const ROUTE = 'POST /api/chat';
 
 export async function POST(request: NextRequest) {
   // 0. Auth check
@@ -84,11 +87,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Request cancelled', aborted: true }, { status: 499 });
     }
     if (error instanceof AiServiceUnavailableError) {
+      record(ROUTE, 503);
       return NextResponse.json(
         { error: 'Recall Advisor is unavailable', details: error.message },
         { status: 503 }
       );
     }
+    record(ROUTE, 500);
     console.error('[Chat] Error:', error);
     return NextResponse.json(
       { error: `Chat failed: ${error instanceof Error ? error.message : 'Unknown error'}` },

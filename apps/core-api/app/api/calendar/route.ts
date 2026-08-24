@@ -6,6 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import Rox from 'rox-node';
 import { auth } from '@/auth';
 import db from '@recall/shared/db';
+import { record } from '@/lib/error-metrics';
+
+const ROUTE = 'GET /api/calendar';
 /**
  * GET /api/calendar
  * Returns requirements where calendarTracking=true and dueDate is set.
@@ -15,6 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     // FM gate — calendarView (kill switch)
     if (!Rox.dynamicApi.isEnabled('recall.calendarView', false)) {
+      record(ROUTE, 403, 'recall.calendarView');
       return NextResponse.json(
         { error: 'Calendar view is currently disabled' },
         { status: 403 }
@@ -74,6 +78,7 @@ export async function GET(request: NextRequest) {
       requirements,
     });
   } catch (error) {
+    record(ROUTE, 500);
     console.error('[API] Calendar GET error:', error);
     return NextResponse.json(
       { error: 'Failed to load calendar data' },

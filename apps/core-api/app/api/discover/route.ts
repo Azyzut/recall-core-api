@@ -10,6 +10,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { callWorker, WorkerUnavailableError } from '@/lib/services/worker-client';
+import { record } from '@/lib/error-metrics';
+
+const ROUTE = 'POST /api/discover';
 
 // --- Rate Limiter (in-memory, per IP) ---
 // 3 discoveries per IP per hour, auto-cleans expired entries
@@ -83,11 +86,13 @@ async function dispatch(input: DiscoveryInput, signal?: AbortSignal) {
       );
     }
     if (error instanceof WorkerUnavailableError) {
+      record(ROUTE, 503);
       return NextResponse.json(
         { error: 'Discovery service is unavailable', details: error.message },
         { status: 503 }
       );
     }
+    record(ROUTE, 500);
     console.error('[API] Discovery error:', error);
     return NextResponse.json(
       {

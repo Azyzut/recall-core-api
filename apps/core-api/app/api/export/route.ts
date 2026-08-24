@@ -15,6 +15,9 @@ import type { AgencyType } from '@recall/shared/db';
 import ExcelJS from 'exceljs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { record } from '@/lib/error-metrics';
+
+const ROUTE = 'GET /api/export';
 
 function priorityLabel(priority: number | null): string {
   switch (priority) {
@@ -79,6 +82,7 @@ export async function GET(request: NextRequest) {
 
     // FM gate — exportPdf (kill switch)
     if (format === 'pdf' && !Rox.dynamicApi.isEnabled('recall.exportPdf', false)) {
+      record(ROUTE, 403, 'recall.exportPdf');
       return NextResponse.json({ error: 'PDF export is currently disabled' }, { status: 403 });
     }
 
@@ -130,6 +134,7 @@ export async function GET(request: NextRequest) {
       return generatePDF(requirements, company, agency, stats);
     }
   } catch (error) {
+    record(ROUTE, 500);
     console.error('Export error:', error);
     return NextResponse.json(
       { error: 'Failed to generate export' },
