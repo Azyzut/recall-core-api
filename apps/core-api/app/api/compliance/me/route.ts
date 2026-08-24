@@ -4,6 +4,7 @@ import { auth } from '@/auth';
 import { findDiscoveriesByEmail, findDiscoveriesWithCompanyById } from '@recall/shared/services/discovery';
 import { buildComplianceResponse } from '@/lib/services/compliance-builder';
 import db from '@recall/shared/db';
+import { isServiceKilled, MAINTENANCE_MESSAGE } from '@/lib/fm-kill-switch';
 
 export async function GET() {
   const session = await auth();
@@ -13,6 +14,13 @@ export async function GET() {
       { error: 'Authentication required' },
       { status: 401 }
     );
+  }
+
+  // The kill switch has to be enforced here, not only at sign-in: this is what every
+  // authenticated page load fetches, so gating it is what makes a refresh land in the
+  // same place rather than sailing past the switch.
+  if (await isServiceKilled(session.user.id, session.user.email || '')) {
+    return NextResponse.json({ error: MAINTENANCE_MESSAGE }, { status: 503 });
   }
 
   try {
