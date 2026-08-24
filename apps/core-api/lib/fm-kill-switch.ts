@@ -1,18 +1,25 @@
-// The recall.errorState kill switch.
+// The recall.dashboardRedesign kill switch.
+//
+// The flag is named for the feature an audience is hoping to see. Turning it on takes
+// the application away; turning it off brings it back in seconds, with no deployment.
+// That is the demonstration — and it lands harder when the thing being rolled back was
+// something the room actually wanted.
 //
 // Checked in more than one place on purpose. It was originally evaluated only on
 // /api/auth/redirect, which runs once immediately after sign-in — so a refresh went
 // straight to the matrix, never asked, and the user was through. A kill switch you can
 // escape by pressing F5 is not a kill switch.
 //
-// Two things this deliberately does NOT do:
+// The web UI responds to a 503 from here by ending the session and returning to the
+// login page, which then refuses to let anyone back in while the flag is on. An earlier
+// version left the session intact and rendered an error in place; that assumed pages
+// could cope with having no data, and they could not — a 503 reached code expecting a
+// payload and tripped Next's error boundary. Signing out is only a loop if the login
+// page says nothing, so it says something.
 //
-//   - It does not destroy the session. Forcing a logout produces a loop — sign in, get
-//     ejected, try again — which reads as a broken application rather than a service
-//     that has been deliberately closed.
-//   - It does not live in middleware. Middleware runs on the edge runtime, and the
-//     Feature Management server SDK is a Node library. This has to be evaluated where
-//     the SDK actually exists.
+// This deliberately does NOT live in middleware. Middleware runs on the edge runtime
+// and the Feature Management server SDK is a Node library, so the flag has to be
+// evaluated where the SDK actually exists.
 
 // @ts-ignore — rox-node v6, externalized singleton
 import Rox from 'rox-node';
@@ -55,5 +62,5 @@ export async function isServiceKilled(userId: string, email: string): Promise<bo
     state: company?.state ?? undefined,
   });
 
-  return Rox.dynamicApi.isEnabled('recall.errorState', false);
+  return Rox.dynamicApi.isEnabled('recall.dashboardRedesign', false);
 }
