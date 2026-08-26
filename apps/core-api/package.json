@@ -1,0 +1,37 @@
+{
+  "name": "@recall/core-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core API. Public /api/* surface: auth, CRUD, compliance, documents, calendar, export, admin and /api/fm-config. Proxies to the AI service and the discovery worker.",
+  "scripts": {
+    "dev": "next dev -p 3001",
+    "build": "next build",
+    "start": "next start -p 3001",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.984.0",
+    "@aws-sdk/s3-request-presigner": "^3.984.0",
+    "@recall/shared": "*",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/rox-node": "^5.0.5",
+    "bcryptjs": "^3.0.3",
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.1.0",
+    "jspdf-autotable": "^5.0.7",
+    "kysely": "^0.29.5",
+    "next": "^16.3.0",
+    "next-auth": "5.0.0-beta.32",
+    "pg": "^8.16.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "rox-node": "^6.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8.16.0",
+    "@types/react": "^19",
+    "typescript": "^5"
+  }
+}
