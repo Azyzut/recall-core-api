@@ -3,9 +3,10 @@
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-// No fallback bucket. The previous default, 'ehs-documents-219826710834', named a
-// real account's bucket in a repository attendees copy: every unconfigured
-// deployment would have aimed presigned URLs at it.
+// No fallback bucket. The previous default was a real account's bucket, hardcoded
+// in a repository attendees copy: every unconfigured deployment would have aimed
+// presigned URLs at it. The name embedded an AWS account ID, so it is not
+// repeated here either.
 //
 // The workshop does not provision S3, so document upload is simply unavailable.
 // That is fine — but it has to FAIL CLEARLY, because the UI does expose upload

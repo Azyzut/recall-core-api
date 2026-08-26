@@ -10,7 +10,7 @@ import { callWorker, WorkerUnavailableError } from '@/lib/services/worker-client
 
 // No fallback. This repository is a template attendees copy, so a hardcoded
 // default is a PUBLISHED password on an app reachable at a public hostname — and
-// the previous default, 'recall-admin-2024', was exactly that.
+// the previous default was a guessable constant, which was exactly that.
 //
 // Unset (or the `unset` sentinel, which is how Unify stores "not configured yet")
 // means these endpoints refuse every request. Failing closed is correct for an
