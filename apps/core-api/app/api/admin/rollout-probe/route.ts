@@ -74,14 +74,25 @@ export async function GET(request: Request) {
     );
   }
 
-  // One evaluation per identity, each carrying its own context. Same call the
+  // Two evaluations per identity, each carrying its own context. Same call the
   // real gates make, minus the work that follows it.
+  //
+  // The second evaluation is how the page detects a misconfigured rollout without
+  // needing an API token or the end-of-life configuration endpoint. If the
+  // stickiness property is `userId`, the bucket is md5(userId + seed) and both
+  // answers MUST agree. If it is still the default `rox.distinct_id` — which the
+  // documentation describes as "a randomly generated number in the server side
+  // SDK" — the two answers disagree for roughly half the identities at any
+  // mid-range percentage. Measured, like everything else on this page.
   const pattern: boolean[] = [];
   const perSegment: Record<string, { total: number; enabled: number }> = {};
   for (const seg of SEGMENTS) perSegment[seg.name] = { total: 0, enabled: 0 };
+  let mismatches = 0;
 
   for (const identity of IDENTITIES) {
     const on = Rox.dynamicApi.isEnabled(flag, false, identity);
+    const again = Rox.dynamicApi.isEnabled(flag, false, identity);
+    if (on !== again) mismatches++;
     pattern.push(on);
     const bucket = perSegment[identity.companySize];
     bucket.total++;
@@ -89,6 +100,14 @@ export async function GET(request: Request) {
   }
 
   const enabled = pattern.filter(Boolean).length;
+
+  // A uniform result agrees with itself whatever the stickiness, so the check
+  // cannot speak: 0%, 100%, a flag that is simply off, or a target group with no
+  // percentage all look identical. Say indeterminate rather than claiming a pass
+  // the evidence does not support.
+  const uniform = enabled === 0 || enabled === IDENTITIES.length;
+  const sticky: 'yes' | 'no' | 'indeterminate' =
+    mismatches > 0 ? 'no' : uniform ? 'indeterminate' : 'yes';
   const fmReady = !!process.env.FM_KEY && process.env.FM_KEY !== 'unset';
 
   return NextResponse.json(
@@ -97,6 +116,10 @@ export async function GET(request: Request) {
       samples: IDENTITIES.length,
       enabled,
       pattern,
+      // 'no' means the grid would reshuffle on every poll — the page shows
+      // instructions instead of a misleading picture.
+      sticky,
+      mismatches,
       segments: SEGMENTS.map(s => ({ name: s.name, ...perSegment[s.name] })),
       // Without a key every flag reads its code default, which renders as a
       // uniformly dark grid and looks like a rollout set to zero.
