@@ -1,20 +1,27 @@
-// GET /api/admin/rollout-probe?flag=recall.exportPdf&samples=200
+// GET /api/admin/rollout-probe?flag=recall.exportPdf
 //
-// Measures a progressive rollout instead of reading it.
+// Measures a progressive rollout instead of reading it, and measures it PER
+// IDENTITY so the answer is stable between polls.
 //
 // CloudBees does not expose the rollout percentage: not through the flag API,
 // not in a connected configuration-as-code repository, and not reachably through
-// the SDK's configuration endpoint. That was established and abandoned once
-// already. So this endpoint works the problem from the other side — it asks the
-// real SDK the real question N times and counts the answers.
+// the SDK's configuration endpoint. So this asks the real SDK the real question
+// for a fixed set of identities and counts the answers.
 //
-// DEPENDS ON PER-EVALUATION BUCKETING. A percentage rollout on the server SDK
-// splits each evaluation independently rather than sticking per user, because the
-// bucket is an md5 of the stickiness property and `rox.distinct_id` is a device
-// property that means nothing in a process serving everyone. See
-// unify-findings.md. If CloudBees ever makes server-side evaluation sticky, this
-// returns 0 or `samples` and nothing in between, and the Rollout page goes
-// all-or-nothing rather than subtly wrong.
+// WHY IDENTITIES AND NOT BARE CALLS. The first version called isEnabled() 200
+// times with no context. A percentage rollout then bucketed each call
+// independently, because the default stickiness property is `rox.distinct_id` —
+// a device property that means nothing in a process serving everybody. The grid
+// reshuffled every two seconds, which is accurate but useless: a rollout is
+// supposed to show the same users keeping the feature as the percentage grows.
+//
+// Passing a context makes the bucket md5(<stickiness value> + seed), fixed per
+// identity. See setup.ts, where `userId` and `companySize` are registered as
+// function properties that read from that context.
+//
+// REQUIRES ONE SETTING IN UNIFY: the flag's rollout stickiness property must be
+// `userId`. Left at the default the grid still works but reshuffles, which is
+// the behaviour this endpoint exists to avoid.
 //
 // Node runtime: the server SDK is a Node library, as with the other flag reads.
 
@@ -25,9 +32,8 @@ import { checkAdminAuth } from '@/lib/admin-auth';
 
 export const runtime = 'nodejs';
 
-// Same list the telemetry endpoint reports. Restricting it matters: an arbitrary
-// flag name would turn this into a way to enumerate an organisation's flags, and
-// a large `samples` would turn it into a cheap way to burn CPU.
+// Restricting this matters: an arbitrary flag name would turn the endpoint into
+// a way to enumerate an organisation's flags.
 const ALLOWED = [
   'recall.dashboardRedesign',
   'recall.recallAdvisor',
@@ -35,7 +41,23 @@ const ALLOWED = [
   'recall.calendarView',
 ] as const;
 
-const MAX_SAMPLES = 1000;
+// A pyramid rather than even thirds, because a real book of business is one and
+// because it makes "enterprise only" read as the small, high-value slice it is.
+// The buckets match companySizeBucket() in packages/shared/src/fm/setup.ts, so a
+// target group written against companySize behaves here exactly as it does for a
+// signed-in user.
+const SEGMENTS = [
+  { name: 'small', count: 120 },
+  { name: 'mid-market', count: 55 },
+  { name: 'enterprise', count: 25 },
+] as const;
+
+const IDENTITIES = SEGMENTS.flatMap(seg =>
+  Array.from({ length: seg.count }, (_, i) => ({
+    userId: `${seg.name}-${i}`,
+    companySize: seg.name,
+  }))
+);
 
 export async function GET(request: Request) {
   const auth = checkAdminAuth(request);
@@ -52,33 +74,32 @@ export async function GET(request: Request) {
     );
   }
 
-  const requested = Number(url.searchParams.get('samples') ?? 200);
-  const samples = Number.isFinite(requested)
-    ? Math.min(Math.max(Math.trunc(requested), 1), MAX_SAMPLES)
-    : 200;
-
-  // Each call is a full evaluation against the configuration the SDK currently
-  // holds — the same call the real gates make, minus the work that follows it.
-  let enabled = 0;
+  // One evaluation per identity, each carrying its own context. Same call the
+  // real gates make, minus the work that follows it.
   const pattern: boolean[] = [];
-  for (let i = 0; i < samples; i++) {
-    const on = Rox.dynamicApi.isEnabled(flag, false);
+  const perSegment: Record<string, { total: number; enabled: number }> = {};
+  for (const seg of SEGMENTS) perSegment[seg.name] = { total: 0, enabled: 0 };
+
+  for (const identity of IDENTITIES) {
+    const on = Rox.dynamicApi.isEnabled(flag, false, identity);
     pattern.push(on);
-    if (on) enabled++;
+    const bucket = perSegment[identity.companySize];
+    bucket.total++;
+    if (on) bucket.enabled++;
   }
 
+  const enabled = pattern.filter(Boolean).length;
   const fmReady = !!process.env.FM_KEY && process.env.FM_KEY !== 'unset';
 
   return NextResponse.json(
     {
       flag,
-      samples,
+      samples: IDENTITIES.length,
       enabled,
-      // Returned so the grid shows the actual answers rather than a reshuffle of
-      // the count. Order carries no meaning — there is no user behind a cell.
       pattern,
-      // Without a key every flag reads as its code default, which would render as
-      // a uniformly "off" grid and look like a rollout set to zero.
+      segments: SEGMENTS.map(s => ({ name: s.name, ...perSegment[s.name] })),
+      // Without a key every flag reads its code default, which renders as a
+      // uniformly dark grid and looks like a rollout set to zero.
       fmReady,
       at: Date.now(),
     },
