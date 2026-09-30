@@ -19,9 +19,15 @@
 // identity. See setup.ts, where `userId` and `companySize` are registered as
 // function properties that read from that context.
 //
-// REQUIRES ONE SETTING IN UNIFY: the flag's rollout stickiness property must be
-// `userId`. Left at the default the grid still works but reshuffles, which is
-// the behaviour this endpoint exists to avoid.
+// REQUIRES ONE SETTING IN UNIFY: the flag's stickiness property must be `userId`.
+// Feature management -> click the flag name -> the vertical ellipsis top right ->
+// Flag settings -> Stickiness property. Left at the default the grid still works
+// but reshuffles, which is the behaviour this endpoint exists to avoid — hence the
+// double evaluation below, which detects it.
+//
+// The docs say the setting is environment-specific; it appeared to apply across
+// environments here. Unresolved, so check the environment you are pointed at.
+// See unify-findings.md.
 //
 // Node runtime: the server SDK is a Node library, as with the other flag reads.
 
